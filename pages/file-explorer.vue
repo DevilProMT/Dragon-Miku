@@ -78,7 +78,7 @@
                   <option>Folder</option>
               </select>
               <label>Convert Mode</label>
-              <select>
+              <select v-model="convertMode" >
                   <option>Convert to .tsv</option>
                   <option>Convert to .dnt</option>
               </select>
@@ -105,17 +105,20 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 
 const a = ref('');
 const b = ref('');
 const openMode = ref('Single File');
+const convertMode = ref('Convert to .tsv');
 
 const openFileDialog = async () => {
   const file = await open({
     multiple: false,
     directory: openMode.value == "Folder" ? true : false,
+    filters: convertMode.value == "Convert to .tsv" ? [{ name:'.dnt' , extensions: ['dnt'] }] : [{ name:'.tsv' , extensions: ['tsv'] }]
   });
   a.value = openMode.value == "Folder" ? file+ "\\*.dnt" : file;
 };
@@ -131,17 +134,21 @@ const outputFileDialog = async () => {
     const file = await save({
       multiple: false,
       directory: false,
-      defaultPath: a.value.replace(".dnt",".tsv"),
-      filters: [{ name:'.tsv' , extensions: ['tsv'] }],
+      defaultPath: convertMode.value == "Convert to .tsv" ? a.value.replace(".dnt",".tsv") : a.value.replace(".tsv",".dnt"),
+      filters: convertMode.value == "Convert to .tsv" ? [{ name:'.tsv' , extensions: ['tsv'] }] : [{ name:'.dnt' , extensions: ['dnt'] }]
     });
     b.value = file;
   }
 };
 
 const convert = async () => {
-  invoke('convert', { input_file: a.value, output_file: b.value, open_mode: openMode.value });
+  invoke('convert', { input_file: a.value, output_file: b.value, open_mode: openMode.value, convert_mode: convertMode.value });
 };
 
+watch([openMode, convertMode], () => {
+  a.value = '';
+  b.value = '';
+});
 
 </script>
 

@@ -8,7 +8,7 @@ use std::fs::{self};
 use std::time::Instant;
 
 #[tauri::command(rename_all = "snake_case")]
-fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_mode: String) {
+fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_mode: String, convert_mode: String) {
     let start = Instant::now();
     if open_mode == "Folder" {
         fs::create_dir_all(&output_file).expect("Failed to create output directory");
@@ -18,14 +18,24 @@ fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_
                 Ok(path) => {
                     let input_name = path.to_str().unwrap();
                     let file_name = path.file_name().unwrap().to_str().unwrap();
-                    let output_file_path = Path::new(&output_file).join(file_name.replace(".dnt", ".tsv"));
-                    let _ = converter::convert_to_tsv(input_name, output_file_path.to_str().unwrap());
+                    if convert_mode == "Convert to .tsv" {
+                        let output_file_path = Path::new(&output_file).join(file_name.replace(".dnt", ".tsv"));
+                        let _ = converter::convert_to_tsv(input_name, output_file_path.to_str().unwrap());
+                    } else {
+                        let output_file_path = Path::new(&output_file).join(file_name.replace(".tsv", ".dnt"));
+                        let _ = converter::convert_to_dnt(input_name, output_file_path.to_str().unwrap());
+                    }
                 }
                 Err(_e) => {}
             }
         }
     } else {
-        let _ = converter::convert_to_tsv(input_file.as_str(), output_file.as_str());
+        //let _ = converter::convert_to_tsv(input_file.as_str(), output_file.as_str());
+        if convert_mode == "Convert to .tsv" {
+            let _ = converter::convert_to_tsv(input_file.as_str(), output_file.as_str());
+        } else {
+            let _ = converter::convert_to_dnt(input_file.as_str(), output_file.as_str());
+        }
     }
     let duration = start.elapsed();
     
