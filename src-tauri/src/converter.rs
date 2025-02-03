@@ -1,11 +1,8 @@
 use indexmap::IndexMap;
 use std::fs::File;
-use std::io::{self, BufReader, BufWriter, Read, Write, Seek};
+use std::io::{self, BufReader, BufWriter, Read, Write, Seek, BufRead};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::str;
-use csv::ReaderBuilder;
-use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
 
 pub fn convert_to_tsv(input_file: &str, output_file: &str) -> io::Result<()> {
     let mut fs = BufReader::new(File::open(input_file)?);
@@ -16,7 +13,7 @@ pub fn convert_to_tsv(input_file: &str, output_file: &str) -> io::Result<()> {
 
     let mut type_dictionary = IndexMap::new();
 
-    type_dictionary.insert("_RowID|3".to_string(), 3);
+    type_dictionary.insert("_RowID".to_string(), 3);
 
     for _ in 0..column_count {
         let length = fs.read_u16::<LittleEndian>()?;
@@ -40,7 +37,7 @@ pub fn convert_to_tsv(input_file: &str, output_file: &str) -> io::Result<()> {
         row_data.push(num4.to_string());
 
         for (col_name, type_byte) in &type_dictionary {
-            if col_name == "_RowID|3" {
+            if col_name.contains("_RowID") {
                 continue;
             }
             let value = match type_byte {
@@ -49,7 +46,7 @@ pub fn convert_to_tsv(input_file: &str, output_file: &str) -> io::Result<()> {
                     if length > 0 {
                         let mut string_value = vec![0; length as usize];
                         fs.read_exact(&mut string_value)?;
-                        String::from_utf8_lossy(&string_value).to_string()
+                        String::from_utf8_lossy(&string_value).replace(",", "^").to_string()
                     } else {
                         String::new()
                     }
@@ -68,82 +65,93 @@ pub fn convert_to_tsv(input_file: &str, output_file: &str) -> io::Result<()> {
 }
 
 pub fn convert_to_dnt(input_file: &str, output_file: &str) -> io::Result<()> {
-    let mut rdr = ReaderBuilder::new().delimiter(b'\t').from_path(input_file)?;
-    let headers = rdr.headers()?.clone();
-    let column_count = headers.len() - 1;
-    let records: Vec<_> = rdr.records().collect::<Result<_, _>>()?;
-    let row_count = records.len();
+    let file = File::open(input_file)?;
+    let mut reader = BufReader::new(file);
+
+    let mut first_line = String::new();
+    reader.read_line(&mut first_line)?;
+
+    let fields: Vec<&str> = first_line.trim().split('\t').collect();
+    let field_count = (fields.len() - 1) as u16;
+    let row_lines: Vec<String> = reader.lines()
+    .filter_map(|line| {
+        match line {
+            Ok(l) if !l.trim().is_empty() => Some(l),
+            _ => None,
+        }
+    })
+    .collect();
+
+    let row_count = row_lines.len() as u32;
 
     let mut fs = BufWriter::new(File::create(output_file)?);
+
     fs.write_all(&[0; 4])?;
-
-    let mut actual_column_count = column_count;
-    for header in headers.iter() {
-        if header.contains("64") {
-            actual_column_count -= 1;
-        }
-    }
-
-    fs.write_u16::<LittleEndian>(actual_column_count as u16)?;
+    fs.write_u16::<LittleEndian>(field_count)?;
     fs.write_u32::<LittleEndian>(row_count as u32)?;
 
-    let mut type_dictionary = IndexMap::new();
+    let mut field_types = Vec::with_capacity(fields.len());
+    for field in fields.iter() {
+        let parts: Vec<&str> = field.split('|').collect();
+        if parts.len() == 2 {
+            let field_name = parts[0];
+            let field_type = parts[1].parse::<u8>().unwrap_or(0);
+            if field_name.contains("RowID") { 
+                field_types.push(field_type);
+                continue 
+            }; 
+            field_types.push(field_type);
 
-    for header in headers.iter() {
-        if header.contains("_RowID") || header.contains("64") {
-            continue;
+            let field_name_length = field_name.len() as u16;
+            fs.write_u16::<LittleEndian>(field_name_length)?;
+            fs.write_all(field_name.as_bytes())?;
+            fs.write_u8(field_type)?;
         }
-        let parts: Vec<&str> = header.split('|').collect();
-        let col_name = parts[0];
-        let type_byte: u8 = parts[1].parse().unwrap();
-        let name_length = col_name.len() as u16;
-        fs.write_u16::<LittleEndian>(name_length)?;
-        fs.write_all(col_name.as_bytes())?;
-        fs.write_u8(type_byte)?;
-        type_dictionary.insert(col_name.to_string(), type_byte);
     }
 
-    let buffer: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(Vec::with_capacity(row_count * 1000)));
-
-    records.par_iter().for_each(|record| {
-        let row_id: i32 = record.get(0).unwrap().parse().unwrap();
-        let mut local_buffer = Vec::with_capacity(1000);
-        local_buffer.write_i32::<LittleEndian>(row_id).unwrap();
-        for (col_name, type_byte) in &type_dictionary {
-            let value = record.get(headers.iter().position(|h| h == format!("{}|{}", col_name, type_byte)).unwrap()).unwrap();
-            match type_byte {
+    for row in row_lines.iter() {
+        let row_fields: Vec<&str> = row.trim().split('\t').collect();
+        for (index, value) in row_fields.iter().enumerate() {
+            let field_type = *field_types.get(index).unwrap_or(&0);
+            match field_type {
                 1 => {
-                    let encoded_value = if value.is_empty() || value == "0.0" {
+                    let encoded_value = if value.is_empty() || *value == "0.0" {
                         Vec::new()
                     } else if value.ends_with(".0") {
-                        value[..value.len() - 2].as_bytes().to_vec()
+                        value[..value.len() - 2]
+                            .replace("^", ",")
+                            .as_bytes()
+                            .to_vec()
                     } else {
-                        value.as_bytes().to_vec()
+                        value.replace("^", ",")
+                            .as_bytes()
+                            .to_vec()
                     };
-                    local_buffer.write_u16::<LittleEndian>(encoded_value.len() as u16).unwrap();
-                    local_buffer.write_all(&encoded_value).unwrap();
+
+                    fs.write_u16::<LittleEndian>(encoded_value.len() as u16)?;
+                    fs.write_all(&encoded_value)?;
                 }
                 2 | 3 => {
-                    let int_value: i32 = value.parse().unwrap();
-                    local_buffer.write_i32::<LittleEndian>(int_value).unwrap();
+                    let int_value: i32 = value.parse().unwrap_or(0);
+                    fs.write_i32::<LittleEndian>(int_value)?;
                 }
-                4..=6 => {
-                    let float_value: f32 = value.parse().unwrap();
-                    local_buffer.write_f32::<LittleEndian>(float_value).unwrap();
+                4 | 5 => {
+                    let float_value: f32 = value.parse().unwrap_or(0.0);
+                    fs.write_f32::<LittleEndian>(float_value)?;
+                }
+                6 => {
+                    let double_value: f64 = value.parse().unwrap_or(0.0);
+                    fs.write_f64::<LittleEndian>(double_value)?;
                 }
                 _ => {
-                    local_buffer.write_u8(0).unwrap();
+                    fs.write_u8(0)?;
                 }
             }
         }
-        let mut buffer = buffer.lock().unwrap();
-        buffer.extend_from_slice(&local_buffer);
-    });
+    }
 
-    let mut fs = fs;
-    let buffer = buffer.lock().unwrap();
-    fs.write_all(&buffer)?;
     fs.write_all(&[5])?;
     fs.write_all(b"THEND")?;
+
     Ok(())
 }
