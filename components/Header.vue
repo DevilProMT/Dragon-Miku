@@ -22,12 +22,23 @@
         </nav>
 
         <div data-tauri-drag-region class="ml-auto pt-2 mx-4 flex gap-2">
-            <div class="w-[30px] h-[30px] shrink-0 border border-white p-0.5 cursor-pointer">
+            <button class="w-[30px] h-[30px] shrink-0 border border-white p-0.5" @click="doMinimize">
                 <UIcon name="i-mdi-window-minimize" class="h-[25px] w-[25px]" />
-            </div>
-            <div class="w-[30px] h-[30px] shrink-0 border border-white p-0.5 cursor-pointer">
+            </button>
+            <button class="w-[30px] h-[30px] shrink-0 border border-white p-0.5" @click="doClose">
                 <UIcon name="i-mdi-window-close" class="h-[25px] w-[25px]" />
-            </div>
+            </button>
         </div>
     </header>
 </template>
+
+<script setup>
+import { getCurrentWindow } from '@tauri-apps/api/window';
+
+const doClose = async () => {
+  await getCurrentWindow().close();
+};
+const doMinimize = async () => {
+  await getCurrentWindow().minimize();
+};
+</script>
