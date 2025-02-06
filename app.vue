@@ -1,6 +1,5 @@
 <template>
-  <div>
+  <NuxtLayout>
     <NuxtPage />
-    <nuxt-link to="./file-explorer">Go to File Explorer</nuxt-link>
-  </div>
+  </NuxtLayout>
 </template>

@@ -1,106 +1,52 @@
-<style>
-  body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f0f0;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-  }
-  .container {
-      background-color: #e0e0e0;
-      border: 1px solid #ccc;
-      padding: 20px;
-      width: 600px; /* Increased width */
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  }
-  .header {
-      background-color: #800080;
-      color: white;
-      padding: 10px;
-      text-align: left;
-      font-size: 16px;
-  }
-  .form-group {
-      margin-bottom: 15px;
-  }
-  .form-group label {
-      display: block;
-      margin-bottom: 5px;
-  }
-  .form-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-  }
-  .form-row label {
-      margin-right: 10px;
-  }
-  .form-row select {
-      width: calc(50% - 40px);
-      padding: 5px;
-  }
-  .input-group, .output-group {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-  }
-  .input-group input[type="text"], .output-group input[type="text"] {
-      width: 400px;
-      padding: 5px;
-      margin-right: 10px;
-  }
-  .input-group button, .output-group button {
-      padding: 5px 10px;
-  }
-  .input-group .browse-button, .output-group .browse-button {
-      width: 70px;
-  }
-  .convert-button {
-      text-align: center;
-  }
-  .convert-button button {
-      padding: 10px 20px;
-  }
-</style>
 <template>
-  <div class="container">
-      <div class="header">DNTableConverter</div>
-      <div class="form-group">
-          <label>Option</label>
-          <div class="form-row">
-              <label>Open Mode</label>
-              <select v-model="openMode">
-                  <option selected>Single File</option>
-                  <option>Folder</option>
-              </select>
-              <label>Convert Mode</label>
-              <select v-model="convertMode" >
-                  <option>Convert to .tsv</option>
-                  <option>Convert to .dnt</option>
-              </select>
+  <div class="flex justify-center items-center min-h-[calc(100vh-45px)] bg-gray-100 w-full">
+    <div class="flex flex-col w-full h-full px-6 pt-6">
+      <h1 class="text-2xl font-bold text-purple-700 mb-6 text-center">DNTableConverter</h1>
+      <div class="bg-white shadow-lg rounded-lg p-8">
+        <div class="mb-4">
+          <label class="block text-gray-700">Open Mode</label>
+          <select
+            class="mt-1 block w-full bg-gray-50 border text-black border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+            v-model="openMode">
+            <option>Single File</option>
+            <option>Folder</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-700">Convert Mode</label>
+          <select
+            class="mt-1 block w-full bg-gray-50 border text-black border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+            v-model="convertMode">
+            <option>Convert to .tsv</option>
+            <option>Convert to .dnt</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-700">Input</label>
+          <div class="flex">
+            <input type="text"
+              class="flex-grow mt-[1.25rem] block w-full bg-gray-50 border border-gray-300 rounded-l-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-black"
+              v-model="inputpath" readonly>
+            <button class="bg-purple-600 text-white px-4 py-2 rounded-r-md" @click="openFileDialog">Browse</button>
           </div>
-      </div>
-      <div class="form-group">
-          <div class="input-group">
-              <label>Input</label>
-              <input type="text" v-model="a" readonly>
-              <button @click="openFileDialog" class="browse-button">Browse</button>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-700">Output</label>
+          <div class="flex">
+            <input type="text"
+              class="flex-grow mt-[1.25rem]  block w-full bg-gray-50 border border-gray-300 rounded-l-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-black"
+              v-model="outputpath" readonly>
+            <button class="bg-purple-600 text-white px-4 py-2 rounded-r-md" @click="outputFileDialog">Browse</button>
           </div>
+        </div>
+
+        <button class="w-full bg-purple-700 text-white py-2 rounded-md hover:bg-purple-800 transition"
+          @click="convert">Convert</button>
       </div>
-      <div class="form-group">
-          <div class="output-group">
-              <label>Output</label>
-              <input type="text" v-model="b" readonly>
-              <button @click="outputFileDialog" class="browse-button">Browse</button>
-          </div>
-      </div>
-      <div class="convert-button">
-          <button @click="convert">Convert</button>
-      </div>
+    </div>
   </div>
 </template>
 
@@ -109,8 +55,8 @@ import { ref, watch } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 
-const a = ref('');
-const b = ref('');
+const inputpath = ref('');
+const outputpath = ref('');
 const openMode = ref('Single File');
 const convertMode = ref('Convert to .tsv');
 
@@ -118,9 +64,9 @@ const openFileDialog = async () => {
   const file = await open({
     multiple: false,
     directory: openMode.value == "Folder" ? true : false,
-    filters: convertMode.value == "Convert to .tsv" ? [{ name:'.dnt' , extensions: ['dnt'] }] : [{ name:'.tsv' , extensions: ['tsv'] }]
+    filters: convertMode.value == "Convert to .tsv" ? [{ name: '.dnt', extensions: ['dnt'] }] : [{ name: '.tsv', extensions: ['tsv'] }]
   });
-  a.value = openMode.value == "Folder" ? file+ "\\*.dnt" : file;
+  inputpath.value = openMode.value == "Folder" ? file + "\\*.dnt" : file;
 };
 
 const outputFileDialog = async () => {
@@ -129,25 +75,25 @@ const outputFileDialog = async () => {
       multiple: false,
       directory: true,
     });
-    b.value = file;
+    outputpath.value = file;
   } else {
     const file = await save({
       multiple: false,
       directory: false,
-      defaultPath: convertMode.value == "Convert to .tsv" ? a.value.replace(".dnt",".tsv") : a.value.replace(".tsv",".dnt"),
-      filters: convertMode.value == "Convert to .tsv" ? [{ name:'.tsv' , extensions: ['tsv'] }] : [{ name:'.dnt' , extensions: ['dnt'] }]
+      defaultPath: convertMode.value == "Convert to .tsv" ? inputpath.value.replace(".dnt", ".tsv") : inputpath.value.replace(".tsv", ".dnt"),
+      filters: convertMode.value == "Convert to .tsv" ? [{ name: '.tsv', extensions: ['tsv'] }] : [{ name: '.dnt', extensions: ['dnt'] }]
     });
-    b.value = file;
+    outputpath.value = file;
   }
 };
 
 const convert = async () => {
-  invoke('convert', { input_file: a.value, output_file: b.value, open_mode: openMode.value, convert_mode: convertMode.value });
+  invoke('convert', { input_file: inputpath.value, output_file: outputpath.value, open_mode: openMode.value, convert_mode: convertMode.value });
 };
 
 watch([openMode, convertMode], () => {
-  a.value = '';
-  b.value = '';
+  inputpath.value = '';
+  outputpath.value = '';
 });
 
 </script>
@@ -157,6 +103,7 @@ h1 {
   font-size: 24px;
   margin-bottom: 20px;
 }
+
 button {
   margin-top: 20px;
   padding: 10px 20px;

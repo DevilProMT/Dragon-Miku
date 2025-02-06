@@ -11,6 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@nuxt/ui": "^2.21.0",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-dialog": "~2",
     "nuxt": "^3.15.1",

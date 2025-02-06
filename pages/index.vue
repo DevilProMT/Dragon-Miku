@@ -1,15 +1,8 @@
 <template>
-    <div>
-      <h1>Welcome to the Home Page</h1>
-    </div>
-  </template>
-  
-  <script setup>
-  </script>
-  
-  <style scoped>
-  h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
-  }
-  </style>
+  <div class="mx-auto">
+    <h1 class="text-lg">Welcome to the Home Page</h1>
+  </div>
+</template>
+
+<script setup>
+</script>
