@@ -21,6 +21,7 @@
             <option>Convert to .tsv</option>
             <option>Convert to .dnt</option>
             <option>Convert act v6 to v5</option>
+            <option>Extract Pak</option>
           </select>
         </div>
 
@@ -44,6 +45,12 @@
           </div>
         </div>
 
+        <div class="mb-4" v-if="convertMode == 'Extract Pak'">
+          <label class="block text-gray-700">
+            <input type="checkbox" v-model="usingEncryption" class="mr-2">
+            Using Encryption?
+          </label>
+        </div>
         <button class="w-full bg-purple-700 text-white py-2 rounded-md hover:bg-purple-800 transition"
           @click="convert">Convert</button>
       </div>
@@ -60,23 +67,24 @@ const inputpath = ref('');
 const outputpath = ref('');
 const openMode = ref('Single File');
 const convertMode = ref('Convert to .tsv');
+const usingEncryption = ref(false);
 
 const openFileDialog = async () => {
   const file = await open({
     multiple: false,
     directory: openMode.value == "Folder" ? true : false,
     filters: convertMode.value === "Convert to .tsv"
-    ? [{ name: 'DNT Files', extensions: ['dnt'] }]
-    : convertMode.value === "Convert to .dnt"
-    ? [{ name: 'TSV Files', extensions: ['tsv'] }]
-    : [{ name: 'ACT Files', extensions: ['act'] }]
+      ? [{ name: 'DNT Files', extensions: ['dnt'] }]
+      : convertMode.value === "Convert to .dnt"
+        ? [{ name: 'TSV Files', extensions: ['tsv'] }]
+        : [{ name: 'ACT Files', extensions: ['act'] }]
   });
   const extension =
     convertMode.value === "Convert to .tsv"
       ? "\\*.dnt"
       : convertMode.value === "Convert to .dnt"
-      ? "\\*.tsv"
-      : "";
+        ? "\\*.tsv"
+        : "";
 
   inputpath.value = openMode.value === "Folder" ? file + extension : file;
 };
@@ -93,15 +101,15 @@ const outputFileDialog = async () => {
       multiple: false,
       directory: false,
       defaultPath: convertMode.value === "Convert to .tsv"
-      ? inputpath.value.replace(/\.(dnt|act)$/, ".tsv")
-      : convertMode.value === "Convert to .dnt"
-      ? inputpath.value.replace(/\.(tsv|act)$/, ".dnt")
-      : inputpath.value.replace(/\.(tsv|dnt)$/, ".act"),
+        ? inputpath.value.replace(/\.(dnt|act)$/, ".tsv")
+        : convertMode.value === "Convert to .dnt"
+          ? inputpath.value.replace(/\.(tsv|act)$/, ".dnt")
+          : inputpath.value.replace(/\.(tsv|dnt)$/, ".act"),
       filters: convertMode.value === "Convert to .tsv"
-      ? [{ name: 'TSV Files', extensions: ['tsv'] }]
-      : convertMode.value === "Convert to .dnt"
-      ? [{ name: 'DNT Files', extensions: ['dnt'] }]
-      : [{ name: 'ACT Files', extensions: ['act'] }]
+        ? [{ name: 'TSV Files', extensions: ['tsv'] }]
+        : convertMode.value === "Convert to .dnt"
+          ? [{ name: 'DNT Files', extensions: ['dnt'] }]
+          : [{ name: 'ACT Files', extensions: ['act'] }]
     });
     outputpath.value = file;
   }
