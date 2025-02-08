@@ -1,6 +1,7 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 mod dnt_converter;
 mod act_converter;
+mod pak;
 
 use tauri_plugin_dialog::{MessageDialogKind, MessageDialogBuilder, DialogExt};
 use glob::glob;
@@ -26,7 +27,7 @@ fn get_all_act_files(dir: &Path) -> Vec<PathBuf> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_mode: String, convert_mode: String) {
+fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_mode: String, convert_mode: String, encryption: bool) {
     let start = Instant::now();
     let mut total_act_convert = 0;
 
@@ -65,6 +66,9 @@ fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_
                             "Convert to .dnt" => {
                                 let _ = dnt_converter::convert_to_dnt(input_name, output_file_path.to_str().unwrap());
                             }
+                            "Extract Pak" => {
+                                let _ = pak::pak_extract(input_name, output_file_path.to_str().unwrap(),encryption);
+                            }
                             _ => {}
                         }
                     }
@@ -86,6 +90,9 @@ fn convert(app: tauri::AppHandle, input_file: String, output_file: String, open_
                         total_act_convert += 1;
                     }
                 }
+            }
+            "Extract Pak" => {
+                let _ = pak::pak_extract(input_file.as_str(), output_file.as_str(),encryption);
             }
             _ => {}
         }

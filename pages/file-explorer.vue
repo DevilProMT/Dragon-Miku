@@ -76,15 +76,20 @@ const openFileDialog = async () => {
     filters: convertMode.value === "Convert to .tsv"
       ? [{ name: 'DNT Files', extensions: ['dnt'] }]
       : convertMode.value === "Convert to .dnt"
-        ? [{ name: 'TSV Files', extensions: ['tsv'] }]
-        : [{ name: 'ACT Files', extensions: ['act'] }]
-  });
-  const extension =
+      ? [{ name: 'TSV Files', extensions: ['tsv'] }]
+      : convertMode.value === "Extract Pak"
+      ? [{ name: 'PAK Files', extensions: ['pak'] }]
+      : [{ name: 'ACT Files', extensions: ['act'] }]
+});
+
+const extension =
     convertMode.value === "Convert to .tsv"
       ? "\\*.dnt"
       : convertMode.value === "Convert to .dnt"
-        ? "\\*.tsv"
-        : "";
+      ? "\\*.tsv"
+      : convertMode.value === "Extract Pak"
+      ? "\\*.pak"
+      : "";
 
   inputpath.value = openMode.value === "Folder" ? file + extension : file;
 };
@@ -97,26 +102,34 @@ const outputFileDialog = async () => {
     });
     outputpath.value = file;
   } else {
-    const file = await save({
-      multiple: false,
-      directory: false,
-      defaultPath: convertMode.value === "Convert to .tsv"
-        ? inputpath.value.replace(/\.(dnt|act)$/, ".tsv")
-        : convertMode.value === "Convert to .dnt"
+    if (convertMode.value === "Extract Pak") {
+      const file = await open({
+        multiple: false,
+        directory: true,
+      });
+      outputpath.value = file;
+    } else {
+      const file = await save({
+        multiple: false,
+        directory: false,
+        defaultPath: convertMode.value === "Convert to .tsv"
+          ? inputpath.value.replace(/\.(dnt|act)$/, ".tsv")
+          : convertMode.value === "Convert to .dnt"
           ? inputpath.value.replace(/\.(tsv|act)$/, ".dnt")
           : inputpath.value.replace(/\.(tsv|dnt)$/, ".act"),
-      filters: convertMode.value === "Convert to .tsv"
-        ? [{ name: 'TSV Files', extensions: ['tsv'] }]
-        : convertMode.value === "Convert to .dnt"
+        filters: convertMode.value === "Convert to .tsv"
+          ? [{ name: 'TSV Files', extensions: ['tsv'] }]
+          : convertMode.value === "Convert to .dnt"
           ? [{ name: 'DNT Files', extensions: ['dnt'] }]
           : [{ name: 'ACT Files', extensions: ['act'] }]
-    });
-    outputpath.value = file;
+      });
+      outputpath.value = file;
+    }
   }
 };
 
 const convert = async () => {
-  invoke('convert', { input_file: inputpath.value, output_file: outputpath.value, open_mode: openMode.value, convert_mode: convertMode.value });
+  invoke('convert', { input_file: inputpath.value, output_file: outputpath.value, open_mode: openMode.value, convert_mode: convertMode.value, encryption: usingEncryption.value });
 };
 
 watch([openMode, convertMode], () => {
