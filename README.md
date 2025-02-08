@@ -56,11 +56,11 @@ Make sure you have installed:
 ## Features  
 - DN Table Converter with double type support (v6)
 - Act Converter from v6 to v5
+- PAK extraction support with optional decryption
 
 ---
 
 ## Upcoming Features  
-- PAK Extractor (with & without encryption)
 - REPAK
 - SKN Converter from v11 to v10
 
@@ -68,6 +68,7 @@ Make sure you have installed:
 
 ## Troubleshooting  
 - If you encounter errors running Tauri, make sure Rust is installed:  
+
   ```
   rustup update
   ```
